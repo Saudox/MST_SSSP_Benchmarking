@@ -32,23 +32,42 @@ public class Graph {
 
     public List<Edge> primMST() {
         List<Edge> mst = new ArrayList<>();
-        boolean[] visited = new boolean[numVertices];
-        PriorityQueue<Edge> pq = new PriorityQueue<>();
+        int[] minWeight = new int[numVertices];
+        int[] parent = new int[numVertices];
+        boolean[] inMST = new boolean[numVertices];
 
-        visited[0] = true;
-        pq.addAll(adjList.get(0));
+        Arrays.fill(minWeight, Integer.MAX_VALUE);
+        Arrays.fill(parent, -1);
+
+        // Priority queue storing arrays: [vertex, weightOfPath]
+        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[1]));
+
+        minWeight[0] = 0;
+        pq.add(new int[]{0, 0});
 
         while (!pq.isEmpty()) {
-            Edge currentEdge = pq.poll();
-            int v = currentEdge.v;
+            int[] current = pq.poll();
+            int u = current[0];
+            int currentWeight = current[1];
 
-            if (visited[v]) continue; // skip the vertex if it's already in the mst
-            visited[v] = true;
-            mst.add(currentEdge);
+            // If we already have a cheaper path to u or v is already in the MST, skip this stale queue entry.
+            if (inMST[u] || currentWeight > minWeight[u]) continue;
 
-            for (Edge nextEdge : adjList.get(v)) {
-                if (!visited[nextEdge.v]) {
-                    pq.add(nextEdge);
+            inMST[u] = true;
+
+            if (parent[u] != -1) {
+                mst.add(new Edge(parent[u], u, currentWeight));
+            }
+
+            for (Edge edge : adjList.get(u)) {
+                int v = edge.v;
+                int weight = edge.weight;
+
+                // Only add to PQ if we found a cheaper way to reach v
+                if (!inMST[v] && weight < minWeight[v]) {
+                    minWeight[v] = weight;
+                    parent[v] = u;
+                    pq.add(new int[]{v, weight});
                 }
             }
         }
@@ -111,8 +130,10 @@ public class Graph {
     public int[] DAGShortestPath(int source) {
         int[] inDegree = new int[numVertices];
         for (int u = 0; u < numVertices; u++) {
-            for (Edge e : adjList.get(u)) {
-                inDegree[e.v]++;
+            List<Edge> edges = adjList.get(u);
+            int size = edges.size();
+            for (int i = 0; i < size; i++) {
+                inDegree[edges.get(i).v]++;
             }
         }
 
@@ -128,7 +149,10 @@ public class Graph {
             int u = q.poll();
             topoOrder.add(u);
 
-            for (Edge e : adjList.get(u)) {
+            List<Edge> edges = adjList.get(u);
+            int size = edges.size();
+            for (int i = 0; i < size; i++) {
+                Edge e = edges.get(i);
                 inDegree[e.v]--;
                 if (inDegree[e.v] == 0) {
                     q.add(e.v);
@@ -146,10 +170,14 @@ public class Graph {
         Arrays.fill(dist, Integer.MAX_VALUE);
         dist[source] = 0;
 
-        for (int u : topoOrder) {
-            // if the vertex is reachable from the source
+        int topoSize = topoOrder.size();
+        for (int i = 0; i < topoSize; i++) {
+            int u = topoOrder.get(i);
             if (dist[u] != Integer.MAX_VALUE) {
-                for (Edge e : adjList.get(u)) {
+                List<Edge> edges = adjList.get(u);
+                int edgeCount = edges.size();
+                for (int j = 0; j < edgeCount; j++) {
+                    Edge e = edges.get(j);
                     if (dist[u] + e.weight < dist[e.v]) {
                         dist[e.v] = dist[u] + e.weight;
                     }
