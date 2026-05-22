@@ -80,10 +80,82 @@ public class Graph {
     }
 
     public int[] dijkstra(int source) {
-        return new int[numVertices];
+        int[] dist = new int[numVertices];
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        dist[source] = 0;
+
+        // Priority queue storing arrays: [vertex, distance_from_source]
+        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[1]));
+        pq.add(new int[]{source, 0});
+
+        while (!pq.isEmpty()) {
+            int[] current = pq.poll();
+            int u = current[0];
+            int d = current[1];
+
+            // ignore vertices we already have found the min path to them
+            if (d > dist[u]) continue;
+
+            for (Edge edge : adjList.get(u)) {
+                int v = edge.v;
+                int weight = edge.weight;
+                if (dist[u] + weight < dist[v]) {
+                    dist[v] = dist[u] + weight;
+                    pq.add(new int[]{v, dist[v]});
+                }
+            }
+        }
+        return dist;
     }
 
     public int[] DAGShortestPath(int source) {
-        return new int[numVertices];
+        int[] inDegree = new int[numVertices];
+        for (int u = 0; u < numVertices; u++) {
+            for (Edge e : adjList.get(u)) {
+                inDegree[e.v]++;
+            }
+        }
+
+        Queue<Integer> q = new LinkedList<>();
+        for (int i = 0; i < numVertices; i++) {
+            if (inDegree[i] == 0) {
+                q.add(i);
+            }
+        }
+
+        List<Integer> topoOrder = new ArrayList<>();
+        while (!q.isEmpty()) {
+            int u = q.poll();
+            topoOrder.add(u);
+
+            for (Edge e : adjList.get(u)) {
+                inDegree[e.v]--;
+                if (inDegree[e.v] == 0) {
+                    q.add(e.v);
+                }
+            }
+        }
+
+        // Cycle Detection
+        if (topoOrder.size() != numVertices) {
+            throw new IllegalArgumentException("Graph contains a cycle, Topological sort is not possible here.");
+        }
+
+        // Edge relaxation
+        int[] dist = new int[numVertices];
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        dist[source] = 0;
+
+        for (int u : topoOrder) {
+            // if the vertex is reachable from the source
+            if (dist[u] != Integer.MAX_VALUE) {
+                for (Edge e : adjList.get(u)) {
+                    if (dist[u] + e.weight < dist[e.v]) {
+                        dist[e.v] = dist[u] + e.weight;
+                    }
+                }
+            }
+        }
+        return dist;
     }
 }
